@@ -55,7 +55,7 @@ def krauss_step(x, v, acc_coeff, br_coeff, eps, v_max, reaction_time, road_lengt
 
     for i in range(n):
         x_new[i] = x[i] + v_new[i]
-    return x_new, v_new
+    return np.sort(x_new), v_new
 
 
 def plot_space(road_length, time, history_x, history_v, ):
@@ -138,7 +138,8 @@ def plot_history(path, road_length, time, history_x, history_v):
     plt.clf()
 
 if __name__ == '__main__':
-    full_krauss_simulation(0, time=200)
-    full_krauss_simulation(1, time=1000, num_cars=100, road_length=5000)
-    full_krauss_simulation(2, time=2000, num_cars=300, road_length=5000)
+    #full_krauss_simulation(0, time=200)
+    #full_krauss_simulation(1, time=1000, num_cars=100, road_length=5000)
+    #full_krauss_simulation(2, time=2000, num_cars=300, road_length=5000)
+    full_krauss_simulation(5)
 
