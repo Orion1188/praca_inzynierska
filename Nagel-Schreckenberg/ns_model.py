@@ -91,15 +91,4 @@ def plot_time_space(road_history, colored_heatmap):
 
 if __name__ == '__main__':
     nagel_schreckenberg_simulation(size=1000, steps=1000)
-        
-        
-        
-
-        
-
-
-
-
-
-
 
