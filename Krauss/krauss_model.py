@@ -31,8 +31,8 @@ class KraussSimulation:
     def simulation(self):
 
         path = f'{os.getcwd()}/Krauss/simulations/{str(self.num).rjust(2, "0")}'
-        #os.mkdir(path)
-        history_x, history_v = self._krauss_simulation()
+        os.mkdir(path)
+        self._krauss_simulation()
         avg_speed, max_speed, min_speed, avg_position, std_position, avg_gaps, max_gaps, min_gaps = self._get_stats()
         self._plot_space()
         self._plot_to_gif(path)
@@ -45,7 +45,7 @@ class KraussSimulation:
 
         for i in range(self.time):
             self.x, self.v = self._krauss_step(i)
-        return self.history_x, self.history_v
+        #return self.history_x, self.history_v
     
     def _krauss_step(self, step):
         n = len(self.v)
@@ -153,5 +153,5 @@ if __name__ == '__main__':
     #full_krauss_simulation(0, time=200)
     #full_krauss_simulation(1, time=1000, num_cars=100, road_length=5000)
     #full_krauss_simulation(2, time=2000, num_cars=300, road_length=5000)
-    KraussSimulation(6).simulation()
+    KraussSimulation(0).simulation()
 
