@@ -99,7 +99,7 @@ class KraussSimulation:
 
     def _krauss_step(self, step):
         '''
-            Pojedynczy krok symulacji
+            Pojedynczy krok symulacji.
         '''
         n = len(self.v)
         v_new = np.empty(n)
@@ -129,6 +129,9 @@ class KraussSimulation:
         return x_new, v_new
 
     def _plot_space(self):
+        '''
+            Tworzy wykres pojedynczego kroku i zapisuje w folderze graphs.
+        '''
         n = len(self.history_x[0])
         for i in range(self.time):
             plt.scatter(
@@ -147,6 +150,9 @@ class KraussSimulation:
             plt.clf()
 
     def _plot_to_gif(self, path):
+        '''
+            Tworzy gif dla symulacji na podstawie kroków zapisanych w folderze graphs przy użyciu.
+        '''
         source = f"{os.getcwd()}/Krauss/graphs"
         images = [Image.open(source + "/" + file) for file in os.listdir(source)]
         images[0].save(
@@ -160,6 +166,11 @@ class KraussSimulation:
             os.remove(os.path.join(f"{os.getcwd()}/Krauss/graphs", file))
 
     def _plot_speed_stats(self, path):
+        '''
+            Generuje wykres prędkości maksymalnej, minimalnej i średniej.
+            
+            - path: lokalizacja do której zapisywany jest wykres.
+        '''
         t = np.arange(self.time)
         avg_speed = [np.mean(self.history_v[i]) for i in range(self.time)]
         max_speed = [np.max(self.history_v[i]) for i in range(self.time)]
@@ -175,6 +186,11 @@ class KraussSimulation:
         plt.clf()
 
     def _plot_traffic_flow_stats(self, path):
+        '''
+            Generuje wykres przepływu.
+            
+            - path: lokalizacja do której zapisywany jest wykres.
+        '''
         t = np.arange(self.time)
         avg_speed = np.array([np.mean(self.history_v[i]) for i in range(self.time)])
         traffic_flow = avg_speed * self.num_cars / self.road_length
@@ -187,6 +203,14 @@ class KraussSimulation:
         plt.clf()
     
     def get_jam_stats(self):
+        '''
+            Generuje statystyki dotyczące liczby samochodów w korku w każdym kroku na podstawie parametrów:
+            - jam_speed_coeff
+            - jam_gap_coeff
+            - jam_cars_involved_coeff 
+            
+            Zwraca krok czasowy, w którym wystąpił korek. Jeśli w symulacji nie wystąpił korek zostaje zwrócone None.
+        '''
         g_hom = self.road_length / self.num_cars
         v_hom = g_hom
         gaps = np.array([
@@ -207,6 +231,11 @@ class KraussSimulation:
         return None
 
     def _plot_jam_stats(self, path):
+        '''
+            Generuje wykres liczby samochodów stojących w korku.
+            
+            - path: lokalizacja do której zapisywany jest wykres.
+        '''
         t = np.arange(self.time)
         g_hom = self.road_length / self.num_cars
         v_hom = g_hom
@@ -236,6 +265,11 @@ class KraussSimulation:
         plt.clf()
 
     def _plot_history(self, path):
+        '''
+            Generuje wykres położeń i prędkości dla każdego kroku.
+            
+            - path: lokalizacja do której zapisywany jest wykres.
+        '''
         n = len(self.history_x[0])
         plt.figure(dpi=1200)
         for i in range(self.time):
@@ -256,6 +290,9 @@ class KraussSimulation:
         plt.clf()
 
 def multi_simulation_krauss(number_of_simulations, eps, time):
+    '''
+        Wykonuje wiele symulacji dla zadanego eps i liczby kroków i zwraca odpowiednie statystyki.
+    '''
     avg_velocity = 0
     avg_congestion_time = 0 
     for i in range(number_of_simulations):
@@ -273,6 +310,9 @@ def multi_simulation_krauss(number_of_simulations, eps, time):
         return avg_velocity/number_of_simulations, avg_congestion_time/number_of_simulations
 
 def jam_emergence_and_average_velocity(eps_list, time_list, sim_num=1000):
+    '''
+        Zwraca plik csv zawierający informację o średnim momencie wystąpienia korku oraz średniej prędkości dla zadanej listy parametrów eps oraz zadanej liczby kroków.
+    '''
     velocity_results = np.empty(len(eps_list))
     congestion_results = np.empty(len(eps_list))
     for i in range(len(eps_list)):

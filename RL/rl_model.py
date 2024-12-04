@@ -88,7 +88,7 @@ class QLearningSimulation:
         '''
         # x = np.sort(np.random.uniform(0, self.road_length, self.num_cars))
         # v = np.random.uniform(0, self.v_max, self.num_cars)
-        x = np.linspace(0, self.road_length, self.num_cars)
+        x = np.linspace(0, self.road_length, self.num_cars, endpoint=False)
         v = np.zeros(self.num_cars)
 
         return x, v
@@ -130,8 +130,7 @@ class QLearningSimulation:
         x_new = np.empty(n)
         
         # Wyznaczam odstępy pomiędzy samochodami
-        gaps = np.array([self.x[(i + 1) % n] - self.x[i] for i in range(n)])
-        gaps[-1] += self.road_length
+        gaps = np.array([(self.x[(i + 1) % n] - self.x[i]) % self.road_length for i in range(n)])
         
         # Tablice w których zapiszę stan obecny, przyszły i wykonaną akcję dla każdego samochodu
         states = [None]*n
@@ -198,9 +197,8 @@ class QLearningSimulation:
             x_new[i] = (self.x[i] + v_new[i]) % self.road_length
             
         # Wyznaczenie nowych odstępów
-        
-        gaps_new = np.array([x_new[(i + 1) % n] - x_new[i] for i in range(n)])
-        gaps_new[-1] += self.road_length
+
+        gaps_new = np.array([(x_new[(i + 1) % n] - x_new[i]) % self.road_length for i in range(n)])
             
         # Wprowadzenie nowych stanów
         
@@ -211,6 +209,7 @@ class QLearningSimulation:
         # aktualizacja Q-table
 
         # Opcja z uwzględnieniem każdej nagrody osobno (moja)
+        
         # for i in range(n):
         #     if action == "steady":
         #         reward = v_new[(i - 1) % n] - self.history_v[step][(i - 1) % n]
@@ -227,7 +226,7 @@ class QLearningSimulation:
             elif actions[i] == "accelerate":
                 self.q_table_accelerate[states[i][0], states[i][1], states[i][2]] = (1 - self.alpha) * self.q_table_accelerate[states[i][0], states[i][1], states[i][2]] + self.alpha * (reward + self.gamma * self.q_table_accelerate[states_new[i][0], states_new[i][1], states_new[i][2]])
         
-        return np.sort(x_new), v_new
+        return x_new, v_new
 
     def get_jam_stats(self):
         '''
@@ -454,9 +453,5 @@ if __name__ == "__main__":
     # sim.q_table_data(1.5)
     # sim.q_table_data(2)
     # sim.q_table_data(2.5)
-    QLearningSimulation(15, time=1000, only_stats=False, history_plot=True).simulation()
-    
-# pytania:
-# 1. Czemu dyskretyzacja przerw jest najpierw jako [0, d] a później jako [0, 5] - poprawione na [0, 5]
-# 2. liczy się tylko stan dla ostatniego samochodu a pozostałe są zapominane - raczej poprawione
+    QLearningSimulation(1, time=1000, only_stats=False, history_plot=True).simulation()
     
