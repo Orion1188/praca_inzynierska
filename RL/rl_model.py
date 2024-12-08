@@ -399,8 +399,8 @@ class QLearningSimulation:
         chosen_option = np.ones(np.shape(acc))
         chosen_option[acc == ste] = 0
         chosen_option[acc < ste] = -1
-        df = pd.DataFrame(chosen_option, columns=self.gap_disc)
-        df.index = self.v_prev_disc
+        df = pd.DataFrame(chosen_option)
+        # df.index = self.v_prev_disc
         df.to_csv(f'RL/simulations/{str(self.num).rjust(2, "0")}/q_table_{v}.csv')        
     
         
@@ -447,11 +447,11 @@ def jam_emergence_and_average_velocity(eps_list, time_list, sim_num=1000):
 
 if __name__ == "__main__":
     
-    # sim = QLearningSimulation(13, time=10**4, eps=0.875)
-    # sim.simulation()
-    # sim.q_table_data(0.75)
-    # sim.q_table_data(1.5)
-    # sim.q_table_data(2)
-    # sim.q_table_data(2.5)
-    QLearningSimulation(1, time=1000, only_stats=False, history_plot=True).simulation()
+    sim = QLearningSimulation(17, time=10**4, eps=0.875)
+    sim.simulation()
+    sim.q_table_data(0.75)
+    sim.q_table_data(1.5)
+    sim.q_table_data(2)
+    sim.q_table_data(2.5)
+    # QLearningSimulation(1, time=1000, only_stats=False, history_plot=True).simulation()
     
