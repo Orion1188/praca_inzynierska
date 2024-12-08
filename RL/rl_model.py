@@ -447,11 +447,11 @@ def jam_emergence_and_average_velocity(eps_list, time_list, sim_num=1000):
 
 if __name__ == "__main__":
     
-    sim = QLearningSimulation(17, time=10**4, eps=0.875)
+    sim = QLearningSimulation(2, time=5000, only_stats=False)
     sim.simulation()
-    sim.q_table_data(0.75)
-    sim.q_table_data(1.5)
-    sim.q_table_data(2)
-    sim.q_table_data(2.5)
+    # sim.q_table_data(0.75)
+    # sim.q_table_data(1.5)
+    # sim.q_table_data(2)
+    # sim.q_table_data(2.5)
     # QLearningSimulation(1, time=1000, only_stats=False, history_plot=True).simulation()
     

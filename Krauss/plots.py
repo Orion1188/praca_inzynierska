@@ -13,8 +13,6 @@ def velocity_and_congestion_barplot():
     plt.bar(df['eps'], df['congestion_time'])
     plt.savefig(f'Krauss/stats/congestion_barplot.png')
     plt.clf()
-    
-
 
 if __name__ == '__main__':
     velocity_and_congestion_barplot()

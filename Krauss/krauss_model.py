@@ -173,17 +173,23 @@ class KraussSimulation:
         '''
         t = np.arange(self.time)
         avg_speed = [np.mean(self.history_v[i]) for i in range(self.time)]
-        max_speed = [np.max(self.history_v[i]) for i in range(self.time)]
-        min_speed = [np.min(self.history_v[i]) for i in range(self.time)]
-        plt.figure(dpi=1200)
-        plt.plot(t, avg_speed, color="red", label="$v_{śr}$")
-        plt.plot(t, max_speed, color="green", label="$v_{max}$")
-        plt.plot(t, min_speed, color="blue", label="$v_{min}$")
-        plt.legend()
-        plt.xlabel("Czas")
-        plt.ylabel("Prędkość")
-        plt.savefig(f"{path}/velocity.png")
-        plt.clf()
+        # max_speed = [np.max(self.history_v[i]) for i in range(self.time)]
+        # min_speed = [np.min(self.history_v[i]) for i in range(self.time)]
+        # plt.figure(dpi=1200)
+        # plt.plot(t, avg_speed, color="red", label="$v_{śr}$")
+        # plt.plot(t, max_speed, color="green", label="$v_{max}$")
+        # plt.plot(t, min_speed, color="blue", label="$v_{min}$")
+        # plt.legend()
+        # plt.xlabel("Czas")
+        # plt.ylabel("Prędkość")
+        # plt.savefig(f"{path}/velocity.png")
+        # plt.clf()
+        # plt.close()
+        df = pd.DataFrame()
+        df['t'] = t
+        df['avg_velocity'] = avg_speed
+        df.to_csv(f"{path}/velocity.csv")
+        
 
     def _plot_traffic_flow_stats(self, path):
         '''
@@ -194,13 +200,18 @@ class KraussSimulation:
         t = np.arange(self.time)
         avg_speed = np.array([np.mean(self.history_v[i]) for i in range(self.time)])
         traffic_flow = avg_speed * self.num_cars / self.road_length
-        plt.figure(dpi=1200)
-        plt.plot(t, traffic_flow, color="red", label="Przepływ")
-        plt.legend()
-        plt.xlabel("Czas")
-        plt.ylabel("Przepływ")
-        plt.savefig(f"{path}/flow.png")
-        plt.clf()
+        # plt.figure(dpi=1200)
+        # plt.plot(t, traffic_flow, color="red", label="Przepływ")
+        # plt.legend()
+        # plt.xlabel("Czas")
+        # plt.ylabel("Przepływ")
+        # plt.savefig(f"{path}/flow.png")
+        # plt.clf()
+        # plt.close()
+        df = pd.DataFrame()
+        df['t'] = t
+        df['traffic_flow'] = traffic_flow
+        df.to_csv(f"{path}/flow.csv")
     
     def get_jam_stats(self):
         '''
@@ -255,14 +266,19 @@ class KraussSimulation:
             jam_gap_condition = gaps[i] < self.jam_gap_coeff * g_hom
             jam_cars[i] = np.sum(jam_gap_condition | jam_velocity_condition)
         
-        plt.figure(dpi=1200)
-        plt.plot(t, jam_cars, color="blue", label="Liczba pojazdów")
-        plt.axhline(traffic_jam_state, 0, self.time, color="red", label="Stan korku")
-        plt.legend()
-        plt.xlabel("Czas")
-        plt.ylabel("Liczba samochodów stojących w korku")
-        plt.savefig(f"{path}/gaps_statistics.png")
-        plt.clf()
+        # plt.figure(dpi=1200)
+        # plt.plot(t, jam_cars, color="blue", label="Liczba pojazdów")
+        # plt.axhline(traffic_jam_state, 0, self.time, color="red", label="Stan korku")
+        # plt.legend()
+        # plt.xlabel("Czas")
+        # plt.ylabel("Liczba samochodów stojących w korku")
+        # plt.savefig(f"{path}/gaps_statistics.png")
+        # plt.clf()
+        # plt.close()
+        df = pd.DataFrame()
+        df['t'] = t
+        df['cars_in_congestion'] = jam_cars
+        df.to_csv(f"{path}/congestion.csv")
 
     def _plot_history(self, path):
         '''
@@ -285,9 +301,9 @@ class KraussSimulation:
         plt.colorbar()
         plt.xlim((0, self.road_length))
         plt.gca().invert_yaxis()
-        # plt.axis('scaled')
         plt.savefig(f"{path}/simulation.png")
         plt.clf()
+        plt.close()
 
 def multi_simulation_krauss(number_of_simulations, eps, time):
     '''
@@ -330,10 +346,10 @@ def jam_emergence_and_average_velocity(eps_list, time_list, sim_num=1000):
     ###########################################################
 
 if __name__ == "__main__":
-    sim = KraussSimulation(4, eps=0.5, time=10000)
+    sim = KraussSimulation(2, time=5000, only_stats=False)
     sim.simulation()
-    print(np.mean(sim.history_v))
-    print(sim.get_jam_stats())
+    # print(np.mean(sim.history_v))
+    # print(sim.get_jam_stats())
     # eps_list = [0.5, 0.75, 1]
     # time_list = [1000, 1000, 1000]
     # jam_emergence_and_average_velocity(eps_list, time_list, sim_num=100)
