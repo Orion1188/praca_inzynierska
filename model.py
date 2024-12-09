@@ -294,6 +294,21 @@ class TrafficSimulation:
         df['traffic_flow'] = traffic_flow
         df.to_csv(f"{path}/flow.csv")
         
+        
+    def fuel_consumption_stats(self, path):
+        '''
+            Generuje wykres zużycia paliwa na podstawie wzoru z artykułu.
+            
+            - path: lokalizacja do której zapisywany jest wykres.
+        '''
+        t = np.arange(self.time)
+        f_cons = lambda v: 2 * v**2 - 2 * v + 2 + 1 / v
+        avg_fuel_consumption = np.array([np.mean(f_cons(self.history_v[i])) for i in range(self.time)])
+        df = pd.DataFrame()
+        df['t'] = t
+        df['fuel_consumption'] = avg_fuel_consumption
+        df.to_csv(f"{path}/fuel.csv")
+        
 
     def congestion_stats(self, path):
         '''
@@ -368,22 +383,51 @@ class TrafficSimulation:
         return None
 
 
-def multi_simulation(number_of_simulations, model, eps, time):
+def multi_simulation(num, mod, number_of_simulations, eps, time):
     '''
         Wykonuje wiele symulacji dla zadanego modelu, epsilona i liczby kroków i zwraca odpowiednie statystyki.
     '''
-    avg_velocity = 0
-    avg_congestion_time = 0 
+    path = f'{os.getcwd()}/{mod}/multisim/{str(num).rjust(2, "0")}'
+    if not os.path.isdir(path):
+        os.mkdir(path)
+        
+    avg_velocity = np.empty(number_of_simulations)
+    avg_flow = np.empty(number_of_simulations)
+    congestion_time = np.empty(number_of_simulations)
+    fuel_consumption = np.empty(number_of_simulations)
+    f_cons = lambda v: 2 * v**2 - 2 * v + 2 + 1 / v
+    
     for i in range(number_of_simulations):
-        sim = TrafficSimulation(i, model=model, eps=eps, time=time)
+        sim = TrafficSimulation(mod, 99, eps=eps, time=time)
         sim.simulation()
-        avg_velocity += np.mean(sim.history_v[20:])
-        jam_stats = sim.congestion_stats_multisim()
-        if jam_stats == None or avg_congestion_time == None:
-            avg_congestion_time = None
-        else:
-            avg_congestion_time += jam_stats
-    if avg_congestion_time == None:
-        return avg_velocity/number_of_simulations, None
-    else:
-        return avg_velocity/number_of_simulations, avg_congestion_time/number_of_simulations
+        avg_velocity[i] = np.mean(sim.history_v)
+        avg_flow[i] = np.sum(sim.history_v) * sim.num_cars / sim.road_length / time
+        congestion_time[i] = sim.congestion_stats_multisim()
+        fuel_consumption[i] = np.mean(np.array([np.mean(f_cons(sim.history_v[i])) for i in range(sim.time)]))
+    
+    df = pd.DataFrame()
+    df['velocity'] = avg_velocity
+    df['flow'] = avg_flow
+    df['congestion'] =  congestion_time
+    df['fuel_consumption'] = fuel_consumption
+    df.to_csv(f'{mod}/multisim/{str(num).rjust(2, "0")}/stats_eps{eps}.csv')
+
+
+def jam_emergence_and_average_velocity(num, mod, eps_list, time_list, sim_num=1000):
+    '''
+        Zwraca plik csv zawierający informację o średnim momencie wystąpienia korku oraz średniej prędkości dla zadanej listy parametrów eps oraz zadanej liczby kroków.
+    '''
+    velocity_results = np.empty(len(eps_list))
+    congestion_results = np.empty(len(eps_list))
+    for i in range(len(eps_list)):
+        eps = eps_list[i]
+        time = time_list[i]
+        velocity_results[i], congestion_results[i] = multi_simulation(mod, sim_num, eps, time)
+        print(eps)
+    sim_stats = pd.DataFrame()
+    sim_stats['eps'] = eps_list
+    sim_stats['time'] = time_list
+    sim_stats['congestion_time'] = congestion_results
+    sim_stats['avg_velocity'] = velocity_results
+    sim_stats.to_csv(f'Krauss/multisim/{str(num).rjust(2, "0")}/congestion_and_velocity_stats.csv')
+
