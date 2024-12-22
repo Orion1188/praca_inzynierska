@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib.colors as colors
 
-def nagel_schreckenberg_simulation(size=1000, density=0.1, v_max=5, steps=1000, random_slow_prob=0.5, colored_heatmap=False):
+def nagel_schreckenberg_simulation(num, size=1000, density=0.1, v_max=5, steps=1000, random_slow_prob=0.5, colored_heatmap=False):
     '''
         Symulacja dla modelu Nagela-Schreckenberga. Parametry:
         size - długość drogi
@@ -17,7 +17,7 @@ def nagel_schreckenberg_simulation(size=1000, density=0.1, v_max=5, steps=1000, 
     road_history = np.empty((steps, size))
     for step in range(steps):
         road = nagel_screckenberg_step(step, road, road_history, v_max, size, random_slow_prob)
-    plot_time_space(road_history[0:], colored_heatmap)
+    plot_time_space(road_history[0:], colored_heatmap, num)
 
 def generate_road(size, density, v_max):
     '''
@@ -77,18 +77,28 @@ def nagel_screckenberg_step(step, road, road_history, v_max, size, random_slow_p
 
     return road_new_state.astype(int)
 
-def plot_time_space(road_history, colored_heatmap):
+def plot_time_space(road_history, colored_heatmap, num):
     if colored_heatmap:
         cmap = colors.ListedColormap(['black', '#9cffe4', '#28fc03', '#9dfc03', '#fce803', '#fc9003', '#fc0303'])
         bounds = [-1.5, -0.5, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5]
     else:
         cmap = colors.ListedColormap(['white', 'black'])
         bounds = [-1.5, -0.5, 5.5]
+    plt.figure(dpi=1200)
     norm = colors.BoundaryNorm(bounds, cmap.N)
     plt.pcolor(road_history, cmap=cmap, norm=norm)
+    plt.xlabel('Przestrzeń')
+    plt.ylabel('Czas')
     plt.gca().invert_yaxis()
-    plt.show()
+    plt.gca().set_aspect(aspect=1)
+    plt.savefig(f'Nagel_Schreckenberg/sim_{num}.png')
+    plt.close()
 
 if __name__ == '__main__':
-    nagel_schreckenberg_simulation(size=1000, steps=1000)
+    nagel_schreckenberg_simulation(0, size=1000, steps=2000, random_slow_prob=0.25)
+    nagel_schreckenberg_simulation(1, size=1000, steps=2000, random_slow_prob=0.5)
+    nagel_schreckenberg_simulation(2, size=1000, steps=2000, random_slow_prob=0.75)
+    nagel_schreckenberg_simulation(3, size=1000, steps=2000, density=0.05)
+    nagel_schreckenberg_simulation(4, size=1000, steps=2000, density=0.15)
+    nagel_schreckenberg_simulation(5, size=1000, steps=2000, density=0.20)
 

@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import pandas as pd
-from PIL import Image
 
 class TrafficSimulation:
     def __init__(
@@ -16,6 +15,7 @@ class TrafficSimulation:
         road_length=200,
         num_cars=100,
         time=100,
+        dt = 1,
         reaction_time=1,
         v_disc=41,
         v_prev_disc=21,
@@ -23,12 +23,9 @@ class TrafficSimulation:
         alpha=0.1,
         gamma=0.99,
         reward_independent=True,
-        create_gif=False,
         jam_speed_coeff=0.2,
         jam_gap_coeff=0.2,
-        jam_cars_involved_coeff=0.1,
-        only_stats=True,
-        history_plot=False
+        jam_cars_involved_coeff=0.1
     ):
         '''
             Parametry symulacji:
@@ -41,6 +38,7 @@ class TrafficSimulation:
             - road_length: długość trasy.
             - num_cars: liczba samochodów.
             - time: liczba kroków symulacji.
+            - dt: krok czasowy.
             - reaction time: czas reakcji kierowcy.
             - v_disc: liczba przedziałów, na które dzielimy możliwe prędkości dla obecnego agenta. Potrzebna do wyznaczenia stanu.
             - v_prev_disc: liczba przedziałów, na które dzielimy możliwe prędkości dla poprzedniego agenta. Potrzebna do wyznaczenia stanu.
@@ -66,13 +64,14 @@ class TrafficSimulation:
         self.road_length = road_length
         self.num_cars = num_cars
         self.time = time
+        self.dt = dt
         self.reaction_time = reaction_time
         self.alpha = alpha
         self.gamma = gamma
         self.x = np.linspace(0, self.road_length, self.num_cars, endpoint=False)
         self.v = np.zeros(self.num_cars)
-        self.history_x = np.empty((self.time, self.num_cars))
-        self.history_v = np.empty((self.time, self.num_cars))
+        self.history_x = np.empty((int(self.time/self.dt), self.num_cars))
+        self.history_v = np.empty((int(self.time/self.dt), self.num_cars))
         self.v_disc = np.linspace(0, v_max, v_disc)
         self.v_prev_disc = np.linspace(0, v_max, v_prev_disc)
         # self.gap_disc = np.linspace(0, road_length, gap_disc)
@@ -103,15 +102,18 @@ class TrafficSimulation:
         self.velocity_stats(path)
         self.traffic_flow_stats(path)
         self.congestion_stats(path)
+        self.fuel_consumption_stats(path)
+        self.history_data(path)
     
     
     def krauss_simulation(self):
         '''
             Wykonuje zadaną liczbę kroków symulacji modelu Kraussa.
         '''
-        for i in range(self.time):
+        steps = int(self.time/self.dt)
+        for i in range(steps):
             self.x, self.v = self.krauss_step(i)
-            print(i)
+            print(i*self.dt)
         
         
     def krauss_step(self, step):
@@ -125,14 +127,14 @@ class TrafficSimulation:
         # Wyznaczam odstęp między obecnym a następnym samochodem
         gaps = np.array([(self.x[(i + 1) % n] - self.x[i]) % self.road_length for i in range(n)])
         
-        for i in range(n): # Wyznaczam v_des dla każdego samochodu zgodnie z wzorami z artykułu
+        for i in range(0, n): # Wyznaczam v_des dla każdego samochodu zgodnie z wzorami z artykułu
             full_stop_time = (self.v[i] + self.v[(i + 1) % n]) / (2 * self.br_coeff)
             gap = gaps[i]
             gap_des = self.reaction_time * self.v[(i + 1) % n]
             v_safe = self.v[(i + 1) % n] + (gap - gap_des) / (
                 self.reaction_time + full_stop_time
             )
-            v_des = min([self.v_max, self.v[i] + self.acc_coeff, v_safe])
+            v_des = min([self.v_max, self.v[i] + self.acc_coeff * self.dt, v_safe])
             if (v_des == self.v_max) or (v_des == v_safe): # odejmuję szum w przypadku gdy prędkość jest ograniczona przez v_max lub v_safe
                 v_new[i] = max(0, v_des - np.random.uniform(0, self.eps))
             else:
@@ -142,7 +144,7 @@ class TrafficSimulation:
         self.history_x[step] = self.x % self.road_length
 
         for i in range(n):
-            x_new[i] = (self.x[i] + v_new[i]) % self.road_length
+            x_new[i] = (self.x[i] + v_new[i] * self.dt) % self.road_length
         return x_new, v_new
 
 
@@ -150,9 +152,10 @@ class TrafficSimulation:
         '''
             Wykonuje zadaną liczbę kroków symulacji z użyciem reinforcement learning.
         '''
-        for i in range(self.time):
+        steps = int(self.time/self.dt)
+        for i in range(steps):
             self.x, self.v = self.rl_step(i)
-            print(i)
+            print(i*self.dt)
 
 
     def rl_step(self, step):
@@ -177,8 +180,8 @@ class TrafficSimulation:
             # Wyznaczenie współrzędnych obecnego stanu w Q-table
             states[i] = [
                 np.searchsorted(self.v_disc, self.v[i]),
-                np.searchsorted(self.v_prev_disc, self.v[(i - 1) % n]),
-                np.searchsorted(self.gap_disc, min(gaps[(i - 1) % n], 4.99))
+                np.searchsorted(self.v_prev_disc, self.v[(i + 1) % n]),
+                np.searchsorted(self.gap_disc, min(gaps[i], 4.99))
             ]
 
             # Wyznaczenie prędkości przy założeniu, że przyspieszymy/będziemy zmuszeni żeby zwolnić
@@ -187,7 +190,7 @@ class TrafficSimulation:
             v_safe = self.v[(i + 1) % n] + (gaps[i] - gap_des) / (
                 self.reaction_time + full_stop_time
             )
-            v_des = min([self.v_max, self.v[i] + self.acc_coeff, v_safe])
+            v_des = min([self.v_max, self.v[i] + self.acc_coeff * self.dt, v_safe])
 
             # Podjęcie decyzji. Jeśli v_des jest większe od obecnej prędkości to decyzja zostanie podjęta na podstawie Q-table. 
             if v_des > self.v[i]:
@@ -229,7 +232,7 @@ class TrafficSimulation:
         # Wprowadzenie nowych położeń
 
         for i in range(n):
-            x_new[i] = (self.x[i] + v_new[i]) % self.road_length
+            x_new[i] = (self.x[i] + v_new[i] * self.dt) % self.road_length
             
         # Wyznaczenie nowych odstępów
 
@@ -246,7 +249,7 @@ class TrafficSimulation:
         # Opcja z uśrednieniem nagrody (z artykułu)
         
         if self.reward_independent:
-            reward = np.mean(np.array([v_new[(i - 1) % n] - self.history_v[step][(i - 1) % n] for i in range(n)]))
+            reward = np.mean(np.array([v_new[i] - self.history_v[step][i] for i in range(n)]))
             for i in range(n):
                 if actions[i] == "steady":
                     self.q_table_steady[states[i][0], states[i][1], states[i][2]] = (1 - self.alpha) * self.q_table_steady[states[i][0], states[i][1], states[i][2]] + self.alpha * (reward + self.gamma * self.q_table_steady[states_new[i][0], states_new[i][1], states_new[i][2]])
@@ -257,10 +260,10 @@ class TrafficSimulation:
         else:
             for i in range(n):
                 if actions[i] == "steady":
-                    reward = v_new[(i - 1) % n] - self.history_v[step][(i - 1) % n]
+                    reward = v_new[i] - self.history_v[step][i]
                     self.q_table_steady[states[i][0], states[i][1], states[i][2]] = (1 - self.alpha) * self.q_table_steady[states[i][0], states[i][1], states[i][2]] + self.alpha * (reward + self.gamma * self.q_table_steady[states_new[i][0], states_new[i][1], states_new[i][2]])
                 elif actions[i] == "accelerate":
-                    reward = v_new[(i - 1) % n] - self.history_v[step][(i - 1) % n]
+                    reward = v_new[i] - self.history_v[step][i]
                     self.q_table_accelerate[states[i][0], states[i][1], states[i][2]] = (1 - self.alpha) * self.q_table_accelerate[states[i][0], states[i][1], states[i][2]] + self.alpha * (reward + self.gamma * self.q_table_accelerate[states_new[i][0], states_new[i][1], states_new[i][2]])
 
         return x_new, v_new
@@ -301,8 +304,10 @@ class TrafficSimulation:
             
             - path: lokalizacja do której zapisywany jest wykres.
         '''
+        def f_cons(v):
+            v[v == 0] = 0.05
+            return 2 * v**2 - 2 * v + 2 + 1 / v
         t = np.arange(self.time)
-        f_cons = lambda v: 2 * v**2 - 2 * v + 2 + 1 / v
         avg_fuel_consumption = np.array([np.mean(f_cons(self.history_v[i])) for i in range(self.time)])
         df = pd.DataFrame()
         df['t'] = t
@@ -332,7 +337,7 @@ class TrafficSimulation:
         for i in range(self.time):
             jam_velocity_condition = self.history_v[i] < self.jam_speed_coeff * v_hom
             jam_gap_condition = gaps[i] < self.jam_gap_coeff * g_hom
-            jam_cars[i] = np.sum(jam_gap_condition | jam_velocity_condition)
+            jam_cars[i] = np.sum(jam_gap_condition & jam_velocity_condition)
         
         df = pd.DataFrame()
         df['t'] = t
@@ -378,15 +383,26 @@ class TrafficSimulation:
         for i in range(self.time):
             jam_velocity_condition = self.history_v[i] < self.jam_speed_coeff * v_hom
             jam_gap_condition = gaps[i] < self.jam_gap_coeff * g_hom
-            if np.sum(jam_gap_condition | jam_velocity_condition) > traffic_jam_state and i > 10:
+            if np.sum(jam_gap_condition & jam_velocity_condition) > traffic_jam_state and i > 10:
                 return i
         return None
+    
+    def history_data(self, path):
+        dfv = pd.DataFrame(self.history_v)
+        dfx = pd.DataFrame(self.history_x)
+        dfv.to_csv(f"{path}/history_v.csv")      
+        dfx.to_csv(f"{path}/history_x.csv")    
 
 
 def multi_simulation(num, mod, number_of_simulations, eps, time):
     '''
         Wykonuje wiele symulacji dla zadanego modelu, epsilona i liczby kroków i zwraca odpowiednie statystyki.
     '''
+    def f_cons(v):
+        vc = np.copy(v)
+        vc[vc < 0.05] = 0.05
+        return 2 * vc**2 - 2 * vc + 2 + 1 / vc
+    
     path = f'{os.getcwd()}/{mod}/multisim/{str(num).rjust(2, "0")}'
     if not os.path.isdir(path):
         os.mkdir(path)
@@ -395,13 +411,12 @@ def multi_simulation(num, mod, number_of_simulations, eps, time):
     avg_flow = np.empty(number_of_simulations)
     congestion_time = np.empty(number_of_simulations)
     fuel_consumption = np.empty(number_of_simulations)
-    f_cons = lambda v: 2 * v**2 - 2 * v + 2 + 1 / v
     
     for i in range(number_of_simulations):
         sim = TrafficSimulation(mod, 99, eps=eps, time=time)
         sim.simulation()
         avg_velocity[i] = np.mean(sim.history_v)
-        avg_flow[i] = np.sum(sim.history_v) * sim.num_cars / sim.road_length / time
+        avg_flow[i] = np.sum(sim.history_v) / sim.road_length / time
         congestion_time[i] = sim.congestion_stats_multisim()
         fuel_consumption[i] = np.mean(np.array([np.mean(f_cons(sim.history_v[i])) for i in range(sim.time)]))
     
@@ -412,22 +427,4 @@ def multi_simulation(num, mod, number_of_simulations, eps, time):
     df['fuel_consumption'] = fuel_consumption
     df.to_csv(f'{mod}/multisim/{str(num).rjust(2, "0")}/stats_eps{eps}.csv')
 
-
-def jam_emergence_and_average_velocity(num, mod, eps_list, time_list, sim_num=1000):
-    '''
-        Zwraca plik csv zawierający informację o średnim momencie wystąpienia korku oraz średniej prędkości dla zadanej listy parametrów eps oraz zadanej liczby kroków.
-    '''
-    velocity_results = np.empty(len(eps_list))
-    congestion_results = np.empty(len(eps_list))
-    for i in range(len(eps_list)):
-        eps = eps_list[i]
-        time = time_list[i]
-        velocity_results[i], congestion_results[i] = multi_simulation(mod, sim_num, eps, time)
-        print(eps)
-    sim_stats = pd.DataFrame()
-    sim_stats['eps'] = eps_list
-    sim_stats['time'] = time_list
-    sim_stats['congestion_time'] = congestion_results
-    sim_stats['avg_velocity'] = velocity_results
-    sim_stats.to_csv(f'Krauss/multisim/{str(num).rjust(2, "0")}/congestion_and_velocity_stats.csv')
 
