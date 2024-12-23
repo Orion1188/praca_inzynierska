@@ -103,7 +103,8 @@ class TrafficSimulation:
         self.traffic_flow_stats(path)
         self.congestion_stats(path)
         self.fuel_consumption_stats(path)
-        self.history_data(path)
+        if self.time < 5000:
+            self.history_data(path)
     
     
     def krauss_simulation(self):
