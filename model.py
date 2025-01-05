@@ -25,7 +25,8 @@ class TrafficSimulation:
         reward_independent=True,
         jam_speed_coeff=0.2,
         jam_gap_coeff=0.2,
-        jam_cars_involved_coeff=0.1
+        jam_cars_involved_coeff=0.1,
+        multisim=False
     ):
         '''
             Parametry symulacji:
@@ -82,6 +83,7 @@ class TrafficSimulation:
         self.jam_speed_coeff = jam_speed_coeff
         self.jam_gap_coeff = jam_gap_coeff
         self.jam_cars_involved_coeff = jam_cars_involved_coeff
+        self.multisim = multisim
         
         
     def simulation(self):
@@ -99,12 +101,13 @@ class TrafficSimulation:
         path = f'{os.getcwd()}/{self.model}/simulations/{str(self.num).rjust(2, "0")}'
         if not os.path.isdir(path):
             os.mkdir(path)
-        self.velocity_stats(path)
-        self.traffic_flow_stats(path)
-        self.congestion_stats(path)
-        self.fuel_consumption_stats(path)
-        if self.time < 5000:
-            self.history_data(path)
+        if not self.multisim:
+            self.velocity_stats(path)
+            self.traffic_flow_stats(path)
+            self.congestion_stats(path)
+            self.fuel_consumption_stats(path)
+            if self.time < 5000:
+                self.history_data(path)
     
     
     def krauss_simulation(self):
@@ -136,7 +139,7 @@ class TrafficSimulation:
                 self.reaction_time + full_stop_time
             )
             v_des = min([self.v_max, self.v[i] + self.acc_coeff * self.dt, v_safe])
-            if (v_des == self.v_max) or (v_des == v_safe): # odejmuję szum w przypadku gdy prędkość jest ograniczona przez v_max lub v_safe
+            if ((v_des == self.v_max) or (v_des == v_safe)): # odejmuję szum w przypadku gdy prędkość jest ograniczona przez v_max lub v_safe
                 v_new[i] = max(0, v_des - np.random.uniform(0, self.eps))
             else:
                 v_new[i] = max(0, v_des)
@@ -209,6 +212,7 @@ class TrafficSimulation:
                     if np.random.random() > 0.5:
                         actions[i] = "accelerate"
                         states_new[i][0] = np.searchsorted(self.v_disc, v_des),
+                        # Dodanie szumu jeśli v_safe lub v_max
                         v_new[i] = v_des
                     else:
                         actions[i] = "steady"
@@ -221,8 +225,10 @@ class TrafficSimulation:
 
             else: # W przeciwnym wypadku jesteśmy zmuszeni zwolnić - decyzja jest wymuszona.
                 actions[i] = "slowdown"
-                v_new[i] = max(0, v_des - np.random.uniform(0, self.eps))
-
+                v_new[i] = v_des
+            
+            if v_new[i] == v_safe or v_new[i] == self.v_max or v_new[i] == self.v[i]:
+                v_new[i] = max(0, v_new[i] - np.random.uniform(0, self.eps))
         
         
         # Zapisanie poprzednich prędkości i położeń w historii
@@ -242,8 +248,8 @@ class TrafficSimulation:
         # Wprowadzenie nowych stanów
         
         for i in range(n):
-            states_new[i][1] = np.searchsorted(self.v_prev_disc, v_new[(i - 1) % n])
-            states_new[i][2] = np.searchsorted(self.gap_disc, min(gaps_new[(i - 1) % n], 4.99))
+            states_new[i][1] = np.searchsorted(self.v_prev_disc, v_new[(i + 1) % n])
+            states_new[i][2] = np.searchsorted(self.gap_disc, min(gaps_new[(i + 1) % n], 4.99))
 
         # aktualizacja Q-table
 
@@ -306,7 +312,7 @@ class TrafficSimulation:
             - path: lokalizacja do której zapisywany jest wykres.
         '''
         def f_cons(v):
-            v[v == 0] = 0.05
+            v[v < 0.05] = 0.05
             return 2 * v**2 - 2 * v + 2 + 1 / v
         t = np.arange(self.time)
         avg_fuel_consumption = np.array([np.mean(f_cons(self.history_v[i])) for i in range(self.time)])
@@ -338,7 +344,7 @@ class TrafficSimulation:
         for i in range(self.time):
             jam_velocity_condition = self.history_v[i] < self.jam_speed_coeff * v_hom
             jam_gap_condition = gaps[i] < self.jam_gap_coeff * g_hom
-            jam_cars[i] = np.sum(jam_gap_condition & jam_velocity_condition)
+            jam_cars[i] = np.sum(jam_gap_condition | jam_velocity_condition)
         
         df = pd.DataFrame()
         df['t'] = t
@@ -384,7 +390,7 @@ class TrafficSimulation:
         for i in range(self.time):
             jam_velocity_condition = self.history_v[i] < self.jam_speed_coeff * v_hom
             jam_gap_condition = gaps[i] < self.jam_gap_coeff * g_hom
-            if np.sum(jam_gap_condition & jam_velocity_condition) > traffic_jam_state and i > 10:
+            if np.sum(jam_gap_condition | jam_velocity_condition) > traffic_jam_state and i > 20:
                 return i
         return None
     
@@ -414,7 +420,7 @@ def multi_simulation(num, mod, number_of_simulations, eps, time):
     fuel_consumption = np.empty(number_of_simulations)
     
     for i in range(number_of_simulations):
-        sim = TrafficSimulation(mod, 99, eps=eps, time=time)
+        sim = TrafficSimulation(mod, 99, eps=eps, time=time, multisim=True)
         sim.simulation()
         avg_velocity[i] = np.mean(sim.history_v)
         avg_flow[i] = np.sum(sim.history_v) / sim.road_length / time
