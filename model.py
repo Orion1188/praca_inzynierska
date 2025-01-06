@@ -117,7 +117,7 @@ class TrafficSimulation:
         steps = int(self.time/self.dt)
         for i in range(steps):
             self.x, self.v = self.krauss_step(i)
-            print(i*self.dt)
+            # print(i*self.dt)
         
         
     def krauss_step(self, step):
@@ -159,7 +159,7 @@ class TrafficSimulation:
         steps = int(self.time/self.dt)
         for i in range(steps):
             self.x, self.v = self.rl_step(i)
-            print(i*self.dt)
+            # print(i*self.dt)
 
 
     def rl_step(self, step):
@@ -366,7 +366,7 @@ class TrafficSimulation:
         df.to_csv(f'RL/simulations/{str(self.num).rjust(2, "0")}/q_table_{v}.csv') 
         
         
-    def congestion_stats_multisim(self):
+    def congestion_stats_multisim(self, cutoff):
         '''
             Generuje statystyki dotyczące liczby samochodów w korku w każdym kroku na podstawie parametrów:
             - jam_speed_coeff
@@ -383,14 +383,14 @@ class TrafficSimulation:
                 % self.road_length
                 for i in range(self.num_cars)
             ]
-            for j in range(self.time)
+            for j in range(int(self.time / self.dt))
         ])
         
         traffic_jam_state = self.jam_cars_involved_coeff * self.num_cars
-        for i in range(self.time):
+        for i in range(int(self.time / self.dt)):
             jam_velocity_condition = self.history_v[i] < self.jam_speed_coeff * v_hom
             jam_gap_condition = gaps[i] < self.jam_gap_coeff * g_hom
-            if np.sum(jam_gap_condition | jam_velocity_condition) > traffic_jam_state and i > 20:
+            if np.sum(jam_gap_condition | jam_velocity_condition) > traffic_jam_state and i > max(cutoff, 20):
                 return i
         return None
     
@@ -401,7 +401,7 @@ class TrafficSimulation:
         dfx.to_csv(f"{path}/history_x.csv")    
 
 
-def multi_simulation(num, mod, number_of_simulations, eps, time):
+def multi_simulation(num, mod, number_of_simulations, eps, dt, m, time, rew_ind, cutoff=0):
     '''
         Wykonuje wiele symulacji dla zadanego modelu, epsilona i liczby kroków i zwraca odpowiednie statystyki.
     '''
@@ -420,18 +420,19 @@ def multi_simulation(num, mod, number_of_simulations, eps, time):
     fuel_consumption = np.empty(number_of_simulations)
     
     for i in range(number_of_simulations):
-        sim = TrafficSimulation(mod, 99, eps=eps, time=time, multisim=True)
+        sim = TrafficSimulation(mod, 99, eps=eps, num_cars=m, dt=dt, reaction_time=dt, time=time, multisim=True, reward_independent=rew_ind)
         sim.simulation()
-        avg_velocity[i] = np.mean(sim.history_v)
-        avg_flow[i] = np.sum(sim.history_v) / sim.road_length / time
-        congestion_time[i] = sim.congestion_stats_multisim()
-        fuel_consumption[i] = np.mean(np.array([np.mean(f_cons(sim.history_v[i])) for i in range(sim.time)]))
+        avg_velocity[i] = np.mean(sim.history_v[cutoff:])
+        avg_flow[i] = np.sum(sim.history_v[cutoff:]) / sim.road_length / time
+        congestion_time[i] = sim.congestion_stats_multisim(cutoff)
+        fuel_consumption[i] = np.mean(np.array([np.mean(f_cons(sim.history_v[i])) for i in range(cutoff, int(sim.time/sim.dt))]))
+        print(i)
     
     df = pd.DataFrame()
     df['velocity'] = avg_velocity
     df['flow'] = avg_flow
     df['congestion'] =  congestion_time
     df['fuel_consumption'] = fuel_consumption
-    df.to_csv(f'{mod}/multisim/{str(num).rjust(2, "0")}/stats_eps{eps}.csv')
+    df.to_csv(f'{mod}/multisim/{str(num).rjust(2, "0")}/stats_dt{dt}.csv')
 
 

@@ -135,7 +135,7 @@ def history_plot(model, num):
 # Wykresy do obu modeli dla wielu symulacji
 #======================================================
 
-def multisim_stats_barplot(num, model, eps):
+def multisim_stats_barplot(num, model, eps, param):
     
     n = len(eps)
     
@@ -146,48 +146,86 @@ def multisim_stats_barplot(num, model, eps):
     
     for i in range(n):
         e = eps[i]
-        df = pd.read_csv(f'{model}/multisim/{str(num).rjust(2, "0")}/stats_eps{e}.csv')
+        df = pd.read_csv(f'{model}/multisim/{str(num).rjust(2, "0")}/stats_{param}{e}.csv')
         velocity[i] = np.mean(df['velocity'])
         flow[i] = np.mean(df['flow'])
         fuel[i] = np.mean(df['fuel_consumption'])
-        if None in df['congestion']:
-            congestion[i] = 10**5
+        if not np.any(df['congestion']):
+            congestion[i] = 15000
         else:
-            congestion[i] = np.mean(df['congestion'])
-    ticks = np.linspace(1, 0.5, 5)
+            congestion[i] = int(np.mean(df['congestion']))
+    ticks = eps
+    ticksl = ticks
+    ticks = [1, 2, 3, 4, 5]
+    offset = 6
 
     
     fig, ax = plt.subplots()
     
     ax.set_xticks(ticks)
-    ax.set_xticklabels(ticks)
-    plt.xlabel("$\epsilon$")
+    ax.set_xticklabels(ticksl)
+    plt.title('Prędkość - model Kraussa')
+    # plt.title('Prędkość - model z alg. Q-learning niezależnym od nagród')
+    # plt.title('Prędkość - model z alg. Q-learning zależnym od nagród')
+    # plt.xlabel("$\epsilon$")
+    # plt.xlabel('m')
+    plt.xlabel('$\\tau$, $\Delta t$')
     plt.ylabel("Średnia prędkość")
-    plt.bar(eps, velocity, (max(eps) - min(eps))/len(eps)*0.95)
+    plt.ylim(0, max(velocity)*1.1)
+    plt.bar(ticks, velocity, (max(ticks) - min(ticks))/len(ticks)*0.95)
+    for i in range(len(velocity)):
+        plt.text(ticks[i] - abs(ticks[0] - ticks[1])/offset,round(velocity[i]+0.02*max(velocity), 2),round(velocity[i], 2)) # do 6, 7
     plt.savefig(f'{model}/multisim/{str(num).rjust(2, "0")}/velocity.png')
     ax.clear()
     
     ax.set_xticks(ticks)
-    ax.set_xticklabels(ticks)
-    plt.xlabel("$\epsilon$")
+    ax.set_xticklabels(ticksl)
+    plt.title('Przepływ - model Kraussa')
+    # plt.title('Przepływ - model z alg. Q-learning niezależnym od nagród')
+    # plt.title('Przepływ - model z alg. Q-learning zależnym od nagród')
+    # plt.xlabel("$\epsilon$")
+    # plt.xlabel('m')
+    plt.xlabel('$\\tau$, $\Delta t$')
     plt.ylabel("Średni przepływ")
-    plt.bar(eps, flow, (max(eps) - min(eps))/len(eps)*0.95)
+    plt.ylim(0, max(flow)*1.1)
+    plt.bar(ticks, flow, (max(ticks) - min(ticks))/len(ticks)*0.95)
+    for i in range(len(flow)):
+        plt.text(ticks[i] - abs(ticks[0] - ticks[1])/offset,flow[i]+0.02*max(flow),round(flow[i], 2)) # 6, 7
     plt.savefig(f'{model}/multisim/{str(num).rjust(2, "0")}/flow.png')
     ax.clear()
 
     ax.set_xticks(ticks)
-    ax.set_xticklabels(ticks)
-    plt.xlabel("$\epsilon$")
-    plt.ylabel("Średni moment wystąpienia zatoru")
-    plt.bar(eps, congestion, (max(eps) - min(eps))/len(eps)*0.95)
+    ax.set_xticklabels(ticksl)
+    plt.title('Moment wystąpienia korka - model Kraussa')
+    # plt.title('Moment wystąpienia korka - model z alg. Q-learning niezależnym od nagród', fontsize=11)
+    # plt.title('Moment wystąpienia korka - model z alg. Q-learning zależnym od nagród')
+    # plt.xlabel("$\epsilon$")
+    # plt.xlabel('m')
+    plt.xlabel('$\\tau$, $\Delta t$')
+    plt.ylabel("Średni moment wystąpienia korka")
+    plt.ylim(0, max(congestion)*1.1)
+    plt.bar(ticks, congestion, (max(ticks) - min(ticks))/len(ticks)*0.95)
+    for i in range(len(congestion)):
+        if congestion[i] == 15000:
+            plt.text(ticks[i] - abs(ticks[0] - ticks[1])/offset,congestion[i]+0.02*max(congestion),'>15000', fontsize=6)
+        else:
+            plt.text(ticks[i] - abs(ticks[0] - ticks[1])/(offset+1),congestion[i]+0.02*max(congestion), int(round(congestion[i], 0)), fontsize=7)
     plt.savefig(f'{model}/multisim/{str(num).rjust(2, "0")}/congestion.png')
     ax.clear()
 
     ax.set_xticks(ticks)
-    ax.set_xticklabels(ticks)
-    plt.xlabel("$\epsilon$")
+    ax.set_xticklabels(ticksl)
+    plt.title('Zużycie paliwa - model Kraussa')
+    # plt.title('Zużycie paliwa - model z alg. Q-learning niezależnym od nagród')
+    # plt.title('Zużycie paliwa - model z alg. Q-learning zależnym od nagród')
+    # plt.xlabel("$\epsilon$")
+    # plt.xlabel('m')
+    plt.xlabel('$\\tau$, $\Delta t$')
     plt.ylabel("Średnie zużycie paliwa")
-    plt.bar(eps, fuel, (max(eps) - min(eps))/len(eps)*0.95)
+    plt.ylim(0, max(fuel)*1.1)
+    plt.bar(ticks, fuel, (max(ticks) - min(ticks))/len(ticks)*0.95)
+    for i in range(len(fuel)):
+        plt.text(ticks[i] - abs(ticks[0] - ticks[1])/offset,round(fuel[i]+0.02*max(fuel), 2),round(fuel[i], 2))
     plt.savefig(f'{model}/multisim/{str(num).rjust(2, "0")}/fuel.png')
     ax.clear()
     
@@ -278,29 +316,40 @@ if __name__ == '__main__':
     # num = 0
     # num2 = 1
     # model = 'Krauss'
-    # eps = [1, 0.875, 0.75, 0.625, 0.5]
+    eps = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
+    ms = [50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150]
+    dts = [0.25, 0.5, 1, 2, 4]
+    
     '''Wykresy pojedyncza symulacja'''
-    # avg_velocity_plot(model, num)
-    # traffic_flow_plot(model, num)
-    # congestion_plot(model, num)
-    # fuel_plot(model, num)
     # history_plot('RL', 1)
-    # sim_gif(model, num)
+    # history_plot('RL', 0)
+    # history_plot('Krauss', 0)
     
     '''Wykresy porównujące metody'''
-    flow_comparison(2, 2, 5)
-    flow_comparison(3, 3, 6)
-    flow_comparison(4, 4, 7)
-    fuel_comparison(2, 2, 5)
-    fuel_comparison(3, 3, 6)
-    fuel_comparison(4, 4, 7)
-    congestion_comparison(2, 2, 5)
-    congestion_comparison(3, 3, 6)
-    congestion_comparison(4, 4, 7)
+    # flow_comparison(2, 2, 5)
+    # flow_comparison(3, 3, 6)
+    # flow_comparison(4, 4, 7)
+    # fuel_comparison(2, 2, 5)
+    # fuel_comparison(3, 3, 6)
+    # fuel_comparison(4, 4, 7)
+    # congestion_comparison(2, 2, 5)
+    # congestion_comparison(3, 3, 6)
+    # congestion_comparison(4, 4, 7)
     
     '''Wykresy dla wielu symulacji'''
-    # multisim_stats_barplot(0, 'Krauss', [1])
+    # multisim_stats_barplot(0, 'Krauss', eps, 'eps') # ok
+    # multisim_stats_barplot(2, 'RL', eps, 'eps') # ok
+    # multisim_stats_barplot(3, 'RL', eps, 'eps') # ok
     
+    # multisim_stats_barplot(6, 'Krauss', ms, 'm') # ok
+    # multisim_stats_barplot(6, 'RL', ms, 'm') # ok
+    # multisim_stats_barplot(7, 'RL', ms, 'm') # ok
+    
+    multisim_stats_barplot(8, 'Krauss', dts, 'dt')
+    # multisim_stats_barplot(8, 'RL', dts, 'dt') # ok
+    # multisim_stats_barplot(9, 'RL', dts, 'dt') # ok
+    
+    '''Wykresy Q-table'''    
     # num = 98
     # q_table_heatmap(num, 0.5)
     # q_table_heatmap(num, 1)
